@@ -229,10 +229,13 @@ async fn merge_process(
                 "-c:v".to_string(),
                 "libx264".to_string(),
                 "-preset".to_string(),
-                "ultrafast".to_string(), // Optimize for speed
-                // change utoutput to 1080p
-                //  "-vf".to_string(),
-                // "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2".to_string(),
+                "ultrafast".to_string(),
+                "-tune".to_string(),
+                "fastdecode".to_string(),
+                "-crf".to_string(),
+                "28".to_string(), // Higher CRF for faster encoding (lower quality)
+                "-threads".to_string(),
+                "0".to_string(), // Use all available CPU threads
             ];
 
             if disable_video_audio {
@@ -280,7 +283,9 @@ async fn merge_process(
                 "-stream_loop", "-1",
                 "-i", &audio_path_str,
                 "-t", &target_seconds_str,
-                "-c:a", "aac", // Convert to AAC for consistency
+                "-c:a", "aac",
+                "-ac", "2", // Stereo audio (faster processing)
+                "-ar", "44100", // Standard sample rate
                 &temp_audio_str,
             ];
             
@@ -347,6 +352,8 @@ async fn merge_process(
             "-map".to_string(), "[aout]".to_string(),
             "-c:v".to_string(), "copy".to_string(),
             "-c:a".to_string(), "aac".to_string(),
+            "-ac".to_string(), "2".to_string(), // Stereo output
+            "-ar".to_string(), "44100".to_string(), // Standard sample rate
         ]);
     } else {
         // Use only the new audio (video has no audio or it was disabled)
