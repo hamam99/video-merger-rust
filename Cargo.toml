@@ -1,0 +1,11 @@
+[package]
+name = "vider-merge"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+iced = { version = "0.14.0", features = ["tokio", "advanced", "debug"] }
+rfd = "0.14.1"
+tokio = { version = "1.36.0", features = ["time", "rt", "macros", "fs", "process"] }
+lofty = "0.15.0"
+mp4 = "0.14.0"
