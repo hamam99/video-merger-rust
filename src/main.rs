@@ -217,6 +217,9 @@ async fn merge_process(
         let ffmpeg_cmd = ffmpeg_cmd.clone();
         tokio::spawn(async move {
             let mut args = vec![
+                "-hide_banner".to_string(),
+                "-loglevel".to_string(),
+                "error".to_string(),
                 "-y".to_string(),
                 "-stream_loop".to_string(),
                 "-1".to_string(),
@@ -233,9 +236,9 @@ async fn merge_process(
                 "-tune".to_string(),
                 "fastdecode".to_string(),
                 "-crf".to_string(),
-                "28".to_string(), // Higher CRF for faster encoding (lower quality)
+                "28".to_string(),
                 "-threads".to_string(),
-                "0".to_string(), // Use all available CPU threads
+                "0".to_string(),
             ];
 
             if disable_video_audio {
@@ -279,14 +282,26 @@ async fn merge_process(
         
         tokio::spawn(async move {
              let args = vec![
-                "-y",
-                "-stream_loop", "-1",
-                "-i", &audio_path_str,
-                "-t", &target_seconds_str,
-                "-c:a", "aac",
-                "-ac", "2", // Stereo audio (faster processing)
-                "-ar", "44100", // Standard sample rate
-                &temp_audio_str,
+                "-hide_banner".to_string(),
+                "-loglevel".to_string(),
+                "error".to_string(),
+                "-y".to_string(),
+                "-stream_loop".to_string(),
+                "-1".to_string(),
+                "-i".to_string(),
+                audio_path_str,
+                "-t".to_string(),
+                target_seconds_str,
+                "-vn".to_string(),
+                "-c:a".to_string(),
+                "aac".to_string(),
+                "-ac".to_string(),
+                "2".to_string(),
+                "-ar".to_string(),
+                "44100".to_string(),
+                "-f".to_string(),
+                "mp4".to_string(),
+                temp_audio_str,
             ];
             
             Command::new(ffmpeg_cmd)
@@ -339,6 +354,9 @@ async fn merge_process(
     };
     
     let mut merge_args = vec![
+        "-hide_banner".to_string(),
+        "-loglevel".to_string(),
+        "error".to_string(),
         "-y".to_string(),
         "-i".to_string(), temp_video.to_string_lossy().to_string(),
         "-i".to_string(), temp_audio.to_string_lossy().to_string(),
@@ -365,6 +383,10 @@ async fn merge_process(
         ]);
     }
 
+    merge_args.extend_from_slice(&[
+        "-f".to_string(), "mp4".to_string(),        // FORCE standard MP4 container
+        "-movflags".to_string(), "+faststart".to_string(), // Optimize for web playback
+    ]);
     merge_args.push(output_path.to_string_lossy().to_string());
 
     let merge_out = Command::new(ffmpeg_cmd)
@@ -465,10 +487,22 @@ impl VideoMerger {
                 Task::perform(
                     async {
                         rfd::AsyncFileDialog::new()
+                            .add_filter("MP4 Video", &["mp4"])
                             .set_file_name("merged_output.mp4")
                             .save_file()
                             .await
-                            .map(|h| h.path().to_path_buf())
+                            .map(|h| {
+                                let mut path = h.path().to_path_buf();
+                                let is_mp4 = path
+                                    .extension()
+                                    .and_then(|ext| ext.to_str())
+                                    .map(|ext| ext.eq_ignore_ascii_case("mp4"))
+                                    .unwrap_or(false);
+                                if !is_mp4 {
+                                    path.set_extension("mp4");
+                                }
+                                path
+                            })
                     },
                     Message::StartMerge,
                 )
