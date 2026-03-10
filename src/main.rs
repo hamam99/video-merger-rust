@@ -221,6 +221,8 @@ async fn merge_process(
                 "-loglevel".to_string(),
                 "error".to_string(),
                 "-y".to_string(),
+                "-hwaccel".to_string(),      // Enable hardware decoding
+                "auto".to_string(),
                 "-stream_loop".to_string(),
                 "-1".to_string(),
                 "-i".to_string(),
@@ -229,17 +231,39 @@ async fn merge_process(
                 target_seconds.to_string(),
                 "-map".to_string(),
                 "0:v".to_string(),
-                "-c:v".to_string(),
-                "libx264".to_string(),
-                "-preset".to_string(),
-                "ultrafast".to_string(),
-                "-tune".to_string(),
-                "fastdecode".to_string(),
-                "-crf".to_string(),
-                "28".to_string(),
+            ];
+
+            // Platform-specific hardware acceleration for encoding
+            #[cfg(target_os = "macos")]
+            {
+                args.extend_from_slice(&[
+                    "-c:v".to_string(),
+                    "h264_videotoolbox".to_string(), // Apple Silicon / Intel QuickSync
+                    "-b:v".to_string(),
+                    "6000k".to_string(),             // High bitrate for 1080p quality
+                    "-allow_sw".to_string(),
+                    "1".to_string(),                 // Allow software fallback if HW fails
+                ]);
+            }
+
+            #[cfg(not(target_os = "macos"))]
+            {
+                args.extend_from_slice(&[
+                    "-c:v".to_string(),
+                    "libx264".to_string(),
+                    "-preset".to_string(),
+                    "veryfast".to_string(),          // Optimized for speed
+                    "-tune".to_string(),
+                    "film".to_string(),
+                    "-crf".to_string(),
+                    "18".to_string(),                // Maintain high quality
+                ]);
+            }
+
+            args.extend_from_slice(&[
                 "-threads".to_string(),
                 "0".to_string(),
-            ];
+            ]);
 
             if disable_video_audio {
                 // If disabling audio, we don't map audio stream
